@@ -1,11 +1,8 @@
-from urllib import response
 from rest_framework import serializers
 from .models import CustomUser
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from rest_framework.exceptions import ValidationError
-from datetime import timedelta, timezone
-from rest_framework import status
 
 User=get_user_model()
 
@@ -85,142 +82,107 @@ class ForgotPasswordSerializer(serializers.Serializer):
         if not User.objects.filter(email=value).exists():
             raise serializers.ValidationError("No user found with this email address.")
         return value
-
+    
 
 class ResetPasswordSerializer(serializers.Serializer):
-    token = serializers.CharField(max_length=32)
-    new_password = serializers.CharField(write_only=True, required=True)
+    token = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(min_length=8, write_only=True)
+    confirm_new_password = serializers.CharField(min_length=8, write_only=True)
 
-    def validate_token(self, value):
-        try:
-            reset_entry = ResetPasswordSerializer.objects.get(token=value)
-        except:
-            raise serializers.ValidationError("Invalid token.")
+    def validate(self, attrs):
+        new_password=attrs.get("new_password")
+        # confirm_new_password=attrs.get("confirm_new_password")
 
-        # Check if the token has expired (1 hour expiry time)
-        expiration_time = reset_entry.created_at + timedelta(hours=1)
-        if timezone.now() > expiration_time:
-            raise serializers.ValidationError("The reset link has expired.")
+        # try:
+        #     user=User.objects.get(ne)
+    #     # Check if new password and confirm password match
+    #     if data['new_password'] != data['confirm_new_password']:
+    #         raise ValidationError("New password and confirm new password do not match.")
         
-        return value
-
-    def save(self):
-        token = self.validated_data['token']
-        new_password = self.validated_data['new_password']
-
-        # Get the PasswordReset entry
-        reset_entry = ResetPasswordSerializer.objects.get(token=token)
-        user = reset_entry.user
-
-        # Set the new password for the user
-        user.set_password(new_password)
-        user.save()
-
-        # Optionally, delete the token after password reset to prevent reuse
-        reset_entry.delete()
-
-        return {"message": "Password has been successfully reset."}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# class ForgotPasswordView(APIView):
-#     def post(self, request):
-#         # Initialize the serializer with the request data
-#         serializer = ForgotPasswordSerializer(data=request.data)
-
-#         # Check if the serializer is valid
-#         if serializer.is_valid():
-#             email = serializer.validated_data['email']
-
-#             # Generate a reset token
-#             reset_token = get_random_string(32)
-            
-#             # Generate reset URL
-#             reset_url = f"http://127.0.0.1:8000/reset-password/?token={reset_token}"
-
-#             # Send the password reset email
-#             send_mail(
-#                 "Password Reset",
-#                 f"Click here to reset your password: {reset_url}",
-#                 "no-reply@example.com",
-#                 [email],
-#                 fail_silently=False
-#             )
-
-#             return response({"message": "Password reset link sent."}, status=status.HTTP_200_OK)
-
-#         # If the serializer is invalid, return error response
-#         return response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# class ForgotPasswordSerializer(serializers.Serializer):
-#     email = serializers.EmailField()
-
-#     def validate(self, attrs):
-
-#         # Use the serializer for validation
-#         if  User.objects.filter(email=attrs.get('email')).exists():
-#         # if serializers.is_valid():
-#         #     email = serializers.validated_data['email']
-#         #     User = User.objects.get(email=email)
-#             reset_token = get_random_string(length=32)
-
-#             # Optionally, you can store this reset token in the database, 
-#             # if you have a PasswordResetToken model.
-#             reset_url = f"http://127.0.0.1:8000/reset-password/?token={reset_token}"
-
-#             # Send reset email
-#             send_mail(
-#                 "Password Reset",
-#                 f"Click here to reset your password: {reset_url}",
-#                 "karrepoojitha123@gmail.com",  # Use a valid "from" email
-#                 [email],
-#                 fail_silently=False
-#             )
-#             return response({"message": "Password reset link sent."}, status=status.HTTP_200_OK)
-        
-#         return response(serializers.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-    #     email = data.get('email')
-    #     if not User.objects.filter(email=email).exists():
-    #         raise serializers.ValidationError("No user found with this email address.")
+    #     # You can add more validation logic here, like checking password complexity
     #     return data
 
     # def save(self):
-    #     email = self.validated_data['email']
-    #     user = User.objects.get(email=email)
-    #     reset_token = get_random_string(length=32)
+    #     token = self.validated_data['token']
+    #     new_password = self.validated_data['new_password']
+        
+    #     # You should verify the token in your database and retrieve the user, here we simulate token validation
+    #     user = self.verify_token(token)
+       
+    #     if not user:
+    #         raise ValidationError("Invalid or expired token.")
+        
+    #     # Set the new password
+    #     user.set_password(new_password)
+    #     user.save()
 
-    #     # You we save this token to a password reset model in production
+    #     return {"message": "Password has been successfully updated."}
 
-    #     reset_url = f"http://127.0.0.1:8000/reset-password/?token={reset_token}"
+    # def verify_token(self, token):
+    #     # Here you would verify the token. In this example, we're simply returning a mock user.
+    #     # This is where you would retrieve the user based on the token stored in the database.
+    #     return User.objects.first()
 
-    #     # Send reset email
-    #     send_mail(
-    #         "Password Reset",
-    #         f"Click here to reset your password: {reset_url}",
-    #         "karrepoojitha123@.com",
-    #         [email],
-    #         fail_silently=False
-    #     )
-    #     return {"message": "Password reset link sent."}
+
+
+
+
+
+
+# class ResetPasswordSerializer(serializers.Serializer):
+#     token = serializers.CharField(max_length=32)
+#     new_password = serializers.CharField(write_only=True, required=True)
+
+#     def validate_token(self, value):
+#         try:
+#             reset_entry = ResetPasswordSerializer.objects.get(token=value)
+#         except:
+#             raise serializers.ValidationError("Invalid token.")
+
+#         # Check if the token has expired (1 hour expiry time)
+#         expiration_time = reset_entry.created_at + timedelta(hours=1)
+#         if timezone.now() > expiration_time:
+#             raise serializers.ValidationError("The reset link has expired.")
+        
+#         return value
+
+#     def save(self):
+#         token = self.validated_data['token']
+#         new_password = self.validated_data['new_password']
+
+#         # Get the PasswordReset entry
+#         reset_entry = ResetPasswordSerializer.objects.get(token=token)
+#         user = reset_entry.user
+
+#         # Set the new password for the user
+#         user.set_password(new_password)
+#         user.save()
+
+#         # Optionally, delete the token after password reset to prevent reuse
+#         reset_entry.delete()
+
+#         return {"message": "Password has been successfully reset."}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

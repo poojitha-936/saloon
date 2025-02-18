@@ -1,13 +1,12 @@
+from django.views import generic
 from rest_framework.views import APIView
-from django.contrib.auth.models import User
-from .serializers import RegisterSerializer, LoginSerializer, LogoutSerializer, ChangePasswordSerializer, ForgotPasswordSerializer
+from .serializers import RegisterSerializer, LoginSerializer, LogoutSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer
 from rest_framework  import status
 from rest_framework .permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
-from datetime import timedelta
-from django.utils import timezone
+from rest_framework import generics
 # from django.contrib.auth import get_user_model
 
 class RegisterView(APIView):
@@ -56,11 +55,9 @@ class ForgotPasswordView(APIView):
 
         if serializer.is_valid():
             email = serializer.validated_data['email']
-
             # Generate a reset token
             reset_token = get_random_string(32)
             reset_url = f"http://127.0.0.1:8000/app/reset-password/{reset_token}"
-
             # Send the password reset email
             send_mail(
                 "Password Reset",
@@ -73,30 +70,38 @@ class ForgotPasswordView(APIView):
             return Response({"message": "Password reset link sent."}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
 
-class ResetPasswordView(APIView):
-    def post(self, request, token):
-        print(token)
-        try:
-            reset_entry = ResetPasswordView.objects.get(token=token)
-            # Check if the token is expired (e.g., 1 hour expiration)
-            if reset_entry.created_at + timedelta(hours=1) < timezone.now():
-                return Response({"error": "Token has expired."}, status=status.HTTP_400_BAD_REQUEST)
+
+class ResetPasswordView(generics.GenericAPIView):
+    serializer_class=ResetPasswordSerializer
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message":"Password updated successfully"}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+
+
+# class ResetPasswordView(APIView):
+#     def post(self, request, token):
+#         print(token)
+#         try:
+#             reset_entry = ResetPasswordView.objects.get(token=token)
+#             # Check if the token is expired (e.g., 1 hour expiration)
+#             if reset_entry.created_at + timedelta(hours=1) < timezone.now():
+#                 return Response({"error": "Token has expired."}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Token is valid and not expired
-            return Response({"message": "password reset successfull."}, status=status.HTTP_200_OK)
+#             # Token is valid and not expired
+#             return Response({"message": "password reset successfull."}, status=status.HTTP_200_OK)
 
-        except:
-            return Response({"reset": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-
-
-
-
-
+#         except:
+#             return Response({"reset": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 
