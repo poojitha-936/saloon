@@ -45,6 +45,11 @@ INSTALLED_APPS = [
     'app',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    'allauth',  # Allauth for social login
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',  # Google login provider
+    'social_django',
 ]
 
 AUTH_USER_MODEL = 'app.CustomUser'
@@ -53,14 +58,14 @@ REST_FRAMEWORK={
     'DEFAULT_AUTHENTICATION_CLASSES':(
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    # 'DEFAULT_PERMISSION_CLASSES': (
-    #     'rest_framework.permissions.IsAuthenticated',
-    # ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=15),
     'AUTH_HEADER_TYPES': ('Bearer',),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,  # Enable blacklisting of refresh tokens
@@ -74,6 +79,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'Barber.urls'
@@ -147,15 +153,31 @@ STATIC_URL = 'static/'
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-
 # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Change to SMTP in production
-# SITE_ID = 1
-
+SITE_ID = 1
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'karrepoojitha123@gmail.com'
 EMAIL_HOST_PASSWORD = 'zhto psxw ugkd lhek'
-# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+
+
+GOOGLE_CLIENT_ID = "219951190585-jgs4t86foq1nbs8ltn3n49ununh9cc7t.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET = "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"
+GOOGLE_REDIRECT_URI = "http://127.0.0.1:8000/app/auth/google/callback/"
+GOOGLE_AUTHORIZATION_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USER_INFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
+
+
+AUTHENTICATION_BACKENDS = (
+    'social_core.backends.google.GoogleOAuth2',  # Google OAuth2
+    'django.contrib.auth.backends.ModelBackend',  # Default backend
+)
+
+# SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '<219951190585-jgs4t86foq1nbs8ltn3n49ununh9cc7t.apps.googleusercontent.com>'  # Google Client ID
+# SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '<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>'  # Google Client Secret
+# GOOGLE_REDIRECT_URI = 'http://127.0.0.1:8000/api/auth/google/callback/'
