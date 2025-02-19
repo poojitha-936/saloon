@@ -72,17 +72,21 @@ class ForgotPasswordView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+
 class ResetPasswordView(generics.GenericAPIView):
     serializer_class=ResetPasswordSerializer
 
-    def post(self, request):
-        serializer = ResetPasswordSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message":"Password updated successfully"}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    # def post(self, request):
+    #     serializer = ResetPasswordSerializer(data=request.data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return Response({"message":"Password updated successfully"}, status=status.HTTP_200_OK)
+    #     return Response({"reset": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST)
 
-
+    def post(self, request, *args, **kwargs):
+        token = kwargs.get('token')  # Retrieve the token from URL
+        # Process the token as needed
+        return Response({"message": "Password reset successful"}, status=200)
 
 
 

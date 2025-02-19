@@ -85,12 +85,23 @@ class ForgotPasswordSerializer(serializers.Serializer):
     
 
 class ResetPasswordSerializer(serializers.Serializer):
-    token = serializers.CharField(write_only=True)
-    new_password = serializers.CharField(min_length=8, write_only=True)
-    confirm_new_password = serializers.CharField(min_length=8, write_only=True)
+    new_password = serializers.CharField(required=True, write_only=True)
+    confirm_new_password = serializers.CharField(required=True, write_only=True)
 
-    def validate(self, attrs):
-        new_password=attrs.get("new_password")
+    def validate(self, data):
+        if data['new_password'] != data['confirm_new_password']:
+            raise serializers.ValidationError("Passwords do not match.")
+        return data
+
+
+
+# class ResetPasswordSerializer(serializers.Serializer):
+#     token = serializers.CharField(write_only=True)
+#     new_password = serializers.CharField(min_length=8, write_only=True)
+#     confirm_new_password = serializers.CharField(min_length=8, write_only=True)
+
+#     def validate(self, attrs):
+#         new_password=attrs.get("new_password")
         # confirm_new_password=attrs.get("confirm_new_password")
 
         # try:
