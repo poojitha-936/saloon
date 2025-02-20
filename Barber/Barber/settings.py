@@ -58,9 +58,9 @@ REST_FRAMEWORK={
     'DEFAULT_AUTHENTICATION_CLASSES':(
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
+    # 'DEFAULT_PERMISSION_CLASSES': (
+    #     'rest_framework.permissions.IsAuthenticated',
+    # ),
 }
 
 SIMPLE_JWT = {
@@ -181,3 +181,6 @@ AUTHENTICATION_BACKENDS = (
 # SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '<219951190585-jgs4t86foq1nbs8ltn3n49ununh9cc7t.apps.googleusercontent.com>'  # Google Client ID
 # SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '<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>'  # Google Client Secret
 # GOOGLE_REDIRECT_URI = 'http://127.0.0.1:8000/api/auth/google/callback/'
+
+# 'client_id': settings.GOOGLE_CLIENT_ID,  # type: ignore # Ensure this is correct
+# 'client_secret': settings.GOOGLE_CLIENT_SECRET,  # type: ignore # Ensure this is correct

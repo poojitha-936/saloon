@@ -3,6 +3,7 @@ from .models import CustomUser
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from rest_framework.exceptions import ValidationError
+from rest_framework.authtoken.models import Token
 
 User=get_user_model()
 
@@ -96,6 +97,10 @@ class ResetPasswordSerializer(serializers.Serializer):
         return data
 
 
+class GuestLoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    username = serializers.CharField(max_length=255)
+    is_guest = serializers.BooleanField(default=True)
 
 
 

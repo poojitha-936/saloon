@@ -1,17 +1,16 @@
-import requests
+from datetime import datetime, timedelta
 from rest_framework.views import APIView
-
-from Barber.settings import GOOGLE_TOKEN_URL, GOOGLE_USER_INFO_URL
-from .serializers import RegisterSerializer, LoginSerializer, LogoutSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer
+from .serializers import RegisterSerializer, LoginSerializer, LogoutSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, GuestLoginSerializer, User
 from rest_framework  import status
 from rest_framework .permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.conf import settings
-from django.shortcuts import redirect
 from rest_framework.permissions import AllowAny
-import logging
+import logging, requests, random, string
+from django.contrib.auth import get_user_model, login
+
 
 
 class RegisterView(APIView):
@@ -76,7 +75,6 @@ class ForgotPasswordView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-
 class ResetPasswordView(APIView):
     serializer_class=ResetPasswordSerializer
 
@@ -84,6 +82,17 @@ class ResetPasswordView(APIView):
         token = kwargs.get('token')  # Retrieve the token from URL
         # Process the token as needed
         return Response({"message": "Password reset successful"}, status=200)
+    def _is_token_expired(self, user):
+        """
+        Check if the token is expired. Token expiration logic can vary.
+        Here, we assume the token has a 1-hour expiration time.
+        """
+        token_creation_time = user.reset_token_created_at  # Example field storing the token creation time
+        expiration_time = token_creation_time + timedelta(hours=1)
+        if datetime.now() > expiration_time:
+            return True
+        return False
+
 
 
 logger = logging.getLogger(__name__)
@@ -105,14 +114,10 @@ class GoogleLoginView(APIView):
 
 
 class GoogleCallbackView(APIView):
-    """Handles the OAuth callback from Google."""
     def get(self, request):
-        # Step 1: Get the authorization code
         code = request.GET.get("code")
         if not code:
             return Response({"error": "Authorization code not provided"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Step 2: Exchange code for an access token
         data = {
             "code": code,
             "client_id": settings.GOOGLE_CLIENT_ID,
@@ -120,160 +125,82 @@ class GoogleCallbackView(APIView):
             "redirect_uri": settings.GOOGLE_REDIRECT_URI,
             "grant_type": "authorization_code",
         }
-        logger.info("Exchanging code for access token...")
-
         token_response = requests.post(settings.GOOGLE_TOKEN_URL, data=data)
-        
-        # Check if token response is successful
         if token_response.status_code != 200:
-            logger.error(f"Failed to fetch access token: {token_response.text}")
+            logger.error("Failed to fetch access token: %s", token_response.text)
             return Response({"error": "Failed to fetch access token"}, status=status.HTTP_400_BAD_REQUEST)
-
         tokens = token_response.json()
         access_token = tokens.get("access_token")
-
-        # If there's no access token, log and return error
-        if not access_token:
-            logger.error("Access token is missing in response")
-            return Response({"error": "Access token missing"}, status=status.HTTP_400_BAD_REQUEST)
-
-        logger.info(f"Access token received: {access_token}")
-
-        # Step 3: Use the access token to fetch user info
         headers = {"Authorization": f"Bearer {access_token}"}
         user_info_response = requests.get(settings.GOOGLE_USER_INFO_URL, headers=headers)
-
-        # Check if the response for user info is successful
         if user_info_response.status_code != 200:
-            logger.error(f"Failed to fetch user info: {user_info_response.text}")
+            logger.error("Failed to fetch user info: %s", user_info_response.text)
             return Response({"error": "Failed to fetch user info"}, status=status.HTTP_400_BAD_REQUEST)
 
         user_info = user_info_response.json()
         email = user_info.get("email")
-        
-        # Log the email and tokens to verify
-        logger.info(f"User email: {email}")
-        logger.info(f"User info: {user_info}")
+        name = user_info.get("name")
+        if not email:
+            return Response({"error": "Failed to retrieve email from Google"}, status=status.HTTP_400_BAD_REQUEST)
+        user, created = User.objects.get_or_create(email=email, defaults={"username": name})
+        if created:
+            user.set_unusable_password()  
+            user.save()
+        tokens = user.tokens() 
 
-        # Respond with the user's email and tokens
-        return Response({"email": email, "tokens": tokens}, status=status.HTTP_200_OK)
-    
+        return Response({"email": email, "name": name, "tokens": tokens}, status=status.HTTP_200_OK)
 
 
+class GuestLoginView(APIView):
+    permission_classes = [AllowAny]  # No authentication required for guest login
 
+    def post(self, request, *args, **kwargs):
+        # Use a static email and username for the guest user
+        guest_email = "guest@example.com"
+        guest_username = "guest_user"
+        User.save()
 
-class GoogleCallbackView(APIView):
-    """Handles the OAuth callback from Google."""
-    def get(self, request):
-        code = request.GET.get("code")
-        if not code:
-            return Response({"error": "Authorization code not provided"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Exchange code for an access token
-        data = {
-            "code": code,
-            "client_id": settings.GOOGLE_CLIENT_ID,
-            "client_secret": settings.GOOGLE_CLIENT_SECRET,
-            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
-            "grant_type": "authorization_code",
+        # The data for the guest user (no password is needed)
+        guest_user_data = {
+            'email': guest_email,
+            'username': guest_username,
+            'is_guest': True, 
+             # Mark this as a guest user
         }
 
-        # Log the request data for debugging
-        # logger.info(f"Exchanging code for access token: {data}")
+        # Serialize the guest user data
+        serializer = GuestLoginSerializer(data=guest_user_data)
 
-        token_response = requests.post(GOOGLE_TOKEN_URL, data=data)
-        print(token_response)
-
-        if token_response.status_code != 200:
-            logger.error(f"Failed to fetch access token: {token_response.text}")
-            return Response({"error": "Failed to fetch access token"}, status=status.HTTP_400_BAD_REQUEST)
-
-        tokens = token_response.json()
-        print(tokens)
-        access_token = tokens.get("access_token")
-
-        if not access_token:
-            logger.error("Access token missing in response")
-            return Response({"error": "Access token missing"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Log the access token for debugging
-        logger.info(f"Access Token: {access_token}")
-
-        # Use access token to fetch user info
-        headers = {"Authorization": f"Bearer {access_token}"}
-        user_info_response = requests.get(GOOGLE_USER_INFO_URL, headers=headers)
-
-        if user_info_response.status_code != 200:
-            logger.error(f"Failed to fetch user info: {user_info_response.text}")
-            return Response({"error": "Failed to fetch user info"}, status=status.HTTP_400_BAD_REQUEST)
-
-        user_info = user_info_response.json()
-        email = user_info.get("email")
-        
-        # Handle user login or registration here
-        # Example: Create or fetch the user based on the email
-        # user = User.objects.get_or_create(email=email, defaults={'name': user_info.get("name")})
-
-        return Response({"email": email, "tokens": tokens}, status=status.HTTP_200_OK)
-
-
-
-
-
-# class GoogleCallbackView(APIView):
-#     """Step 2: Handle Google's OAuth 2.0 callback and exchange code for tokens"""
-#     def get(self, request):
-#         code = request.GET.get("code")
-#         if not code:
-#             return Response({"error": "Authorization code not provided"}, status=status.HTTP_400_BAD_REQUEST)
-        
-#         # Exchange code for an access token
-#         data = {
-#             "code": code,
-#             "client_id": settings.GOOGLE_CLIENT_ID,
-#             "client_secret": settings.GOOGLE_CLIENT_SECRET,
-#             "redirect_uri": settings.GOOGLE_REDIRECT_URI,
-#             "grant_type": "authorization_code",
-#         }
-#         token_response = requests.post(settings.GOOGLE_TOKEN_URL, data=data)
-#         if not access_token:
-#             logger.error("No access token returned from Google.")
-#             return Response({"error": "Access token missing"}, status=status.HTTP_400_BAD_REQUEST)
-#         # if token_response.status_code != 200:
-#         #     logger.error("Failed to fetch access token: %s", token_response.text)
-#         #     return Response({"error": "Failed to fetch access token"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         tokens = token_response.json()
-#         access_token = tokens.get("access_token")
-
-#         # Step 3: Use the access token to fetch user info
-#         headers = {"Authorization": f"Bearer {access_token}"}
-#         user_info_response = requests.get(settings.GOOGLE_USER_INFO_URL, headers=headers)
-#         if user_info_response.status_code != 200:
-#             logger.error("Failed to fetch user info: %s", user_info_response.text)
-#             return Response({"error": "Failed to fetch user info"}, status=status.HTTP_400_BAD_REQUEST)
-
-#         user_info = user_info_response.json()
-
-#         # Handle user login or registration here
-#         # Example: Create or fetch the user based on their Google email
-#         email = user_info.get("email")
-#         # name = user_info.get("name")
-
-#         return Response({"email": email,  "tokens": tokens}, status=status.HTTP_200_OK)
-
-
-
-        
-
-
-
-
-    
+        # Check if the serializer is valid
+        if serializer.is_valid():
+            return Response({
+                'message': 'Guest login successful',
+                'guest_user': serializer.data
+            }, status=status.HTTP_201_CREATED)
+        else:
+            return Response({
+                'error': 'Failed to create guest user'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Create your views here.
 
+
+
+class guestLogin(APIView):
+    def post(self,request):
+        guest_user=User.objects.filter(username='guest_user').first()
+        if not guest_user:
+            username="guest_user"
+            user=User.objects.create_user(user_type='customer', email=f"{username}@gmail.com",name=f"{username}",username=username,password=None)
+            user.is_active=True
+            user.is_guest=True
+            user.save()
+            guest_user.backend='django.contrib.auth.backends.ModelBackend'
+            login(request,guest_user)
+            request.session['username']='guest_user'
+            print(request.sessions.session_key)
+            return Response({'message':'welcome'},status=status.HTTP_200_OK)
 
 
 
