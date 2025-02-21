@@ -31,7 +31,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
-    is_guest= models.BooleanField(unique=True)
     
 
     USERNAME_FIELD = 'email'

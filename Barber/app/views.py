@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from rest_framework.views import APIView
-from .serializers import RegisterSerializer, LoginSerializer, LogoutSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, GuestLoginSerializer, User
+from app.models import CustomUser
+from .serializers import RegisterSerializer, LoginSerializer, LogoutSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, EditProfileSerializer, User
 from rest_framework  import status
 from rest_framework .permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -8,9 +9,9 @@ from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.conf import settings
 from rest_framework.permissions import AllowAny
-import logging, requests, random, string
-from django.contrib.auth import get_user_model, login
-
+import logging, requests
+from django.contrib.auth import login
+# from .models import Menu, MenuItem
 
 
 class RegisterView(APIView):
@@ -152,57 +153,64 @@ class GoogleCallbackView(APIView):
 
 
 class GuestLoginView(APIView):
-    permission_classes = [AllowAny]  # No authentication required for guest login
+    def get(self, request):
+        guest_user = CustomUser.objects.filter(username='guest_user').first()          # Check if a guest user already exists
+        if not guest_user:                                                             # If no guest user exists, create a new one
+            username = "guest_user"
+            guest_email = f"{username}@gmail.com"           
+            user = CustomUser.objects.create_user(
+                user_type='customer',
+                username=username,
+                email=guest_email,
+                password=None                                                           # Guest user does not need a password
+            )
+            user.first_name = 'Guest'                                                   # Default name for guest users
+            user.is_active = True                                                       # Mark as active
+            user.save() 
+            user.backend = 'django.contrib.auth.backends.ModelBackend'  
+            login(request, user)                                                        # Log in the guest user                    
+            request.session['username'] = username                                      # Store the session
+            print(request.session.session_key)                                          # Debugging line (remove for production)
+            return Response(
+                {"message": "Logged in successfully", "user": {"username": username}},
+                status=status.HTTP_200_OK
+            )  
+        else:     
+            username = guest_user.username
+            guest_user.backend = 'django.contrib.auth.backends.ModelBackend'                # If guest user exists, log them in without creating a new one
+            login(request, guest_user)
+            request.session['username'] = guest_user.username                               # Store the session
+            print(request.session.session_key)                                              # Debugging line (remove for production)
+            return Response({"message": "Welcome back, guest!", "user": {"username": guest_user.username}},status=status.HTTP_200_OK
+        )
 
-    def post(self, request, *args, **kwargs):
-        # Use a static email and username for the guest user
-        guest_email = "guest@example.com"
-        guest_username = "guest_user"
-        User.save()
 
-        # The data for the guest user (no password is needed)
-        guest_user_data = {
-            'email': guest_email,
-            'username': guest_username,
-            'is_guest': True, 
-             # Mark this as a guest user
-        }
+class EditProfileView(APIView):
+    permission_classes = [IsAuthenticated]                         # Ensure only authenticated users can edit their profile
 
-        # Serialize the guest user data
-        serializer = GuestLoginSerializer(data=guest_user_data)
+    def get(self, request, *args, **kwargs):                       # GET method: Fetch the user profile
+        user = request.user                                        # Access the currently authenticated user (request.user)
+        return Response({                                          # Return the user's profile data directly (email, username, first_name)
+            'email': user.email,
+            'username': user.username}, status=status.HTTP_200_OK)
 
-        # Check if the serializer is valid
-        if serializer.is_valid():
-            return Response({
-                'message': 'Guest login successful',
-                'guest_user': serializer.data
-            }, status=status.HTTP_201_CREATED)
-        else:
-            return Response({
-                'error': 'Failed to create guest user'
-            }, status=status.HTTP_400_BAD_REQUEST)
+    def put(self, request, *args, **kwargs):                           # PUT method: Update the user profile (email, username, first_name)
+        user = request.user                                            # Access the currently authenticated user (request.user)
+        email = request.data.get('email', user.email)                  # Validate and update the user's data directly
+        username = request.data.get('username', user.username)
+        user.email = email                                             # Update the user with the new values
+        user.username = username
+        user.save()                                                    # Save the updated user data
+        return Response({"message": "Profile updated successfully!"}, status=status.HTTP_200_OK)
 
 
+
+
+
+
+
+            
 # Create your views here.
-
-
-
-class guestLogin(APIView):
-    def post(self,request):
-        guest_user=User.objects.filter(username='guest_user').first()
-        if not guest_user:
-            username="guest_user"
-            user=User.objects.create_user(user_type='customer', email=f"{username}@gmail.com",name=f"{username}",username=username,password=None)
-            user.is_active=True
-            user.is_guest=True
-            user.save()
-            guest_user.backend='django.contrib.auth.backends.ModelBackend'
-            login(request,guest_user)
-            request.session['username']='guest_user'
-            print(request.sessions.session_key)
-            return Response({'message':'welcome'},status=status.HTTP_200_OK)
-
-
 
 
 

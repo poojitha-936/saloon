@@ -61,25 +61,21 @@ class ChangePasswordSerializer(serializers.Serializer):
     confirm_new_password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        # Ensure new password and confirm new password match
-        if data['new_password'] != data['confirm_new_password']:
+        if data['new_password'] != data['confirm_new_password']:                          # Ensure new password and confirm new password match
             raise ValidationError("New password and confirm new password do not match.")
         return data
 
     def save(self, user):
-        # Check if the current password is correct
-        if not user.check_password(self.validated_data['current_password']):
-            raise ValidationError("Current password is incorrect.")
-        
-        # Set the new password and save the user
-        user.set_password(self.validated_data['new_password'])
+        if not user.check_password(self.validated_data['current_password']):            # Check if the current password is correct
+            raise ValidationError("Current password is incorrect.")        
+        user.set_password(self.validated_data['new_password'])           # Set the new password and save the user
         user.save()
         return {"message": "Password updated successfully."}
 
 
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
-
+    
     def validate_email(self, value):
         """Validate if the user with the given email exists."""
         if not User.objects.filter(email=value).exists():
@@ -101,8 +97,14 @@ class GuestLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     username = serializers.CharField(max_length=255)
     is_guest = serializers.BooleanField(default=True)
+    name = serializers.CharField(max_length=255, required=True)
+    password = serializers.CharField(write_only=True, required=True)
 
 
+class EditProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['email', 'username', 'first_name']    
 
 
 
