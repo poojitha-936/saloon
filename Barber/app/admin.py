@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import CustomUser
+from .models import CustomUser,MenuSelection, Service, Booking
 
 admin.site.register(CustomUser)
+admin.site.register(MenuSelection)
+admin.site.register(Service)
+admin.site.register(Booking)
 # Register your models here.

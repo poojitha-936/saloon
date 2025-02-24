@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
 from rest_framework.views import APIView
-from app.models import CustomUser
-from .serializers import RegisterSerializer, LoginSerializer, LogoutSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, EditProfileSerializer, User
+from .models import CustomUser
+# from app.serializers import User
+from app.serializers import RegisterSerializer, LoginSerializer, LogoutSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer,MenuSelectionSerializer, ServiceSerializer, BookingSerializer, User
 from rest_framework  import status
 from rest_framework .permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -11,7 +12,7 @@ from django.conf import settings
 from rest_framework.permissions import AllowAny
 import logging, requests
 from django.contrib.auth import login
-# from .models import Menu, MenuItem
+# from .models import Menu
 
 
 class RegisterView(APIView):
@@ -70,7 +71,6 @@ class ForgotPasswordView(APIView):
                 [email],
                 fail_silently=False
             )
-
             return Response({"message": "Password reset link sent."}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -204,11 +204,41 @@ class EditProfileView(APIView):
         return Response({"message": "Profile updated successfully!"}, status=status.HTTP_200_OK)
 
 
+class MenuSelectionView(APIView):
+    """
+    Allow users to select services. Here, we retrieve all services for the user to choose from.
+    """
+    def post(self, request):
+        serializer = MenuSelectionSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message":"MenuSelection successfully"}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)       # Return validation errors if the data is not valid
+        
+
+class ServiceView(APIView):
+    """
+    API view to create a new service.
+    """
+
+    def post(self, request):
+        serializer = ServiceSerializer(data=request.data)                          # Initialize the serializer with the incoming data (request.data)
+        if serializer.is_valid():                                                  # Check if the incoming data is valid       
+            serializer.save()                                                      # Save the new service to the database
+            return Response(serializer.data, status=status.HTTP_201_CREATED)       # Return the serialized data in the response with a 201 CREATED status 
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)     # If the data is not valid, return the validation errors
 
 
-
-
-
+class BookingCreateView(APIView):
+    def post(self, request, *args, **kwargs):
+        # Serialize the data coming in the POST request
+        serializer = BookingSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            # If data is valid, save the booking
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
 # Create your views here.
 

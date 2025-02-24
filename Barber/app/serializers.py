@@ -1,9 +1,9 @@
 from rest_framework import serializers
-from .models import CustomUser
+from app.models import CustomUser, Service
+from .models import CustomUser, MenuSelection, Service, Booking
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from rest_framework.exceptions import ValidationError
-from rest_framework.authtoken.models import Token
 
 User=get_user_model()
 
@@ -107,31 +107,44 @@ class EditProfileSerializer(serializers.ModelSerializer):
         fields = ['email', 'username', 'first_name']    
 
 
+class MenuSelectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MenuSelection
+        fields = ['id','name', 'description']
 
 
+class ServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = ['id', 'name', 'description', 'price', 'duration_minutes']
 
 
+class BookingSerializer(serializers.ModelSerializer):
+    customer = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
+    service = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all())  
+    date = serializers.DateField()
+    time = serializers.TimeField()
+    status = serializers.ChoiceField(choices=[('pending', 'Pending'), ('confirmed', 'Confirmed'), ('cancelled', 'Cancelled')])
 
+    class Meta:
+        model = Booking
+        fields = ['customer', 'service', 'date', 'time', 'status']
 
+    def validate(self, data):
+        """
+        Perform cross-field validation. This method can be used to validate the entire data.
+        """
+        # Validating the customer
+        customer = data.get('customer')
+        if customer is not None and not CustomUser.objects.filter(id=customer.id).exists():
+            raise serializers.ValidationError(f"Customer with ID {customer.id} does not exist.")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        # Validating the service
+        service = data.get('service')
+        if service is not None and not Service.objects.filter(id=service.id).exists():
+            raise serializers.ValidationError(f"Service with ID {service.id} does not exist.")
+        
+        return data
 
 
 

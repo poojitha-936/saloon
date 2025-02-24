@@ -4,6 +4,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 
 
+
+
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, username, password=None, **extra_fields):
         if not email:
@@ -24,7 +26,7 @@ class CustomUserManager(BaseUserManager):
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
-    username = models.CharField(max_length=255, blank=True, unique=True)
+    username = models.CharField(max_length=255, blank=True)
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=50, blank=True)
     last_name = models.CharField(max_length=50, blank=True)
@@ -49,5 +51,49 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
             'access': str(refresh.access_token),
             'refresh': str(refresh),
         }
+
+
+class MenuSelection(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Service(models.Model):
+    name = models.CharField(max_length=255)                              # Name of the service (e.g., "Men's Haircut")
+    description = models.TextField(blank=True, null=True)                                     # Description of the service
+    price = models.DecimalField(max_digits=6, decimal_places=2)          # Price for the service
+    duration_minutes = models.IntegerField()                             # Duration of the service in minutes
+    discount=models.TextField(null=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Booking(models.Model):
+    customer = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    service = models.ForeignKey(Service, on_delete=models.CASCADE)
+    date = models.DateField()
+    time = models.TimeField()
+    status = models.CharField(
+        max_length=50, 
+        choices=[('pending', 'Pending'), ('confirmed', 'Confirmed'), ('cancelled', 'Cancelled')], default='pending')
+
+    def __str__(self):
+        return f"Booking for {self.customer.username} - {self.service.name} on {self.date} at {self.time}"
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Create your models here.
