@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 from rest_framework.views import APIView
-from .models import CustomUser
+from .models import CustomUser, Service
 # from app.serializers import User
-from app.serializers import RegisterSerializer, LoginSerializer, LogoutSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer,MenuSelectionSerializer, ServiceSerializer, BookingSerializer, User
+from app.serializers import  RegisterSerializer, LoginSerializer, LogoutSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, MenuSelectionSerializer, ServiceSerializer,AppointmentSerializer,  User
 from rest_framework  import status
 from rest_framework .permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -229,17 +229,39 @@ class ServiceView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)     # If the data is not valid, return the validation errors
 
 
-class BookingCreateView(APIView):
-    def post(self, request, *args, **kwargs):
-        # Serialize the data coming in the POST request
-        serializer = BookingSerializer(data=request.data)
+class AppointmentCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):                                                                            # Log the user for debugging purposes
+        print(f"Request User: {request.user.id}")
+        user = CustomUser.objects.filter(id=request.user.id).first()                                    # Filter the user by ID (assuming the user is authenticated)
+        
+        if not user:
+            return Response({"detail": "User not found."}, status=status.HTTP_400_BAD_REQUEST)
+        service_ids = request.data.get("service", [])                                                   # Filter services by IDs from the request
+        services = Service.objects.filter(id__in=service_ids)
+        
+        if len(services) != len(service_ids):
+            return Response({"detail": "One or more services do not exist."}, status=status.HTTP_400_BAD_REQUEST)
+        appointment_data = {                                                                           # Create an Appointment instance using the validated data
+            'user': user.id,
+            'service': [service.id for service in services],                                           # Get list of service IDs
+            'date': request.data.get("date"),
+            'time': request.data.get("time"),
+            'status': request.data.get("status", "pending"),                                           # Default to "pending" if not provided
+        }
+        serializer = AppointmentSerializer(data=appointment_data)                                      # Initialize the serializer with the validated data
         
         if serializer.is_valid():
-            # If data is valid, save the booking
-            serializer.save()
+            serializer.save()                                                                          # Create and save the Appointment object
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)                     # If validation fails, return errors
+
+
+
+
+
 # Create your views here.
 
 

@@ -1,3 +1,4 @@
+from datetime import timezone
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -64,27 +65,43 @@ class MenuSelection(models.Model):
 class Service(models.Model):
     name = models.CharField(max_length=255)                              # Name of the service (e.g., "Men's Haircut")
     description = models.TextField(blank=True, null=True)                                     # Description of the service
-    price = models.DecimalField(max_digits=6, decimal_places=2)          # Price for the service
-    duration_minutes = models.IntegerField()                             # Duration of the service in minutes
-    discount=models.TextField(null=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2)          # Price for the service
+    duration_minutes = models.PositiveIntegerField()                             # Duration of the service in minutes
 
     def __str__(self):
         return self.name
 
 
-class Booking(models.Model):
-    customer = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    service = models.ForeignKey(Service, on_delete=models.CASCADE)
-    date = models.DateField()
-    time = models.TimeField()
+class Appointment(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE,null=True)    # Link to a user (customer)
+    service = models.ManyToManyField(Service)                         # This is a ManyToMany relationship
+    date = models.DateField()                                         # The date of the appointment
+    time = models.TimeField()                                         # The time of the appointment
     status = models.CharField(
-        max_length=50, 
-        choices=[('pending', 'Pending'), ('confirmed', 'Confirmed'), ('cancelled', 'Cancelled')], default='pending')
-
+        max_length=20,
+        choices=[('pending', 'pending'),('confirmed', 'confirmed'),('canceled','canceled')],
+        default='pending'
+    )     
+    
     def __str__(self):
-        return f"Booking for {self.customer.username} - {self.service.name} on {self.date} at {self.time}"
+        return f"Appointment for {self.user.username} - {self.service.name} on {self.date} at {self.time}"
 
 
+class Booking(models.Model):
+    PENDING = 'pending',
+    CONFIRMED = 'confirmed',
+    CANCELED = 'canceled',
+
+    STATUS_CHOICES = [
+       (PENDING, 'pending'),
+       (CONFIRMED, 'confirmed'),
+       (CANCELED, 'canceled')
+    ]
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE,null=True)    # Link to a user (customer)
+    service = models.ManyToManyField(Service)                         # This is a ManyToMany relationship
+    date = models.DateField()                                         # The date of the appointment
+    time = models.TimeField()   
 
 
 

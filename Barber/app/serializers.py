@@ -1,9 +1,11 @@
+
 from rest_framework import serializers
-from app.models import CustomUser, Service
-from .models import CustomUser, MenuSelection, Service, Booking
+from .models import CustomUser, MenuSelection, Service, Appointment
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from rest_framework.exceptions import ValidationError
+from datetime import time
+from django.utils import timezone
 
 User=get_user_model()
 
@@ -116,35 +118,94 @@ class MenuSelectionSerializer(serializers.ModelSerializer):
 class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
-        fields = ['id', 'name', 'description', 'price', 'duration_minutes']
+        fields = "__all__"
 
 
-class BookingSerializer(serializers.ModelSerializer):
-    customer = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
-    service = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all())  
-    date = serializers.DateField()
-    time = serializers.TimeField()
-    status = serializers.ChoiceField(choices=[('pending', 'Pending'), ('confirmed', 'Confirmed'), ('cancelled', 'Cancelled')])
-
+class AppointmentSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Booking
-        fields = ['customer', 'service', 'date', 'time', 'status']
+        model = Appointment
+        fields = "__all__"
 
-    def validate(self, data):
-        """
-        Perform cross-field validation. This method can be used to validate the entire data.
-        """
-        # Validating the customer
-        customer = data.get('customer')
-        if customer is not None and not CustomUser.objects.filter(id=customer.id).exists():
-            raise serializers.ValidationError(f"Customer with ID {customer.id} does not exist.")
+    def validate_date(self, value):
+        """Ensure the appointment date is in the future."""
+        # Use timezone-aware date for future check
+        if value < timezone.localdate():  # Use timezone-aware date (current date with timezone)
+            raise serializers.ValidationError("The appointment date must be in the future.")
+        return value
 
-        # Validating the service
-        service = data.get('service')
-        if service is not None and not Service.objects.filter(id=service.id).exists():
-            raise serializers.ValidationError(f"Service with ID {service.id} does not exist.")
+    def validate_time(self, value):
+        """Ensure the appointment time is within working hours (9 AM - 6 PM)."""
+        opening_time = time(9, 0)  # 9:00 AM
+        closing_time = time(18, 0)  # 6:00 PM
+
+        if not (opening_time <= value <= closing_time):
+            raise serializers.ValidationError("The appointment time must be between 9:00 AM and 6:00 PM.")
+        return value
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# class BookingSerializer(serializers.Serializer):
+#     user = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
+#       # Handling multiple services
+#     frequency = serializers.ChoiceField(choices=Booking.frequency_choices)
+#     duration = serializers.ChoiceField(choices=Booking.duration_choices)
+#     date = serializers.DateField()
+#     time = serializers.TimeField()
+#     status = serializers.ChoiceField(choices=[('pending', 'Pending'), ('confirmed', 'Confirmed'), ('cancelled', 'Cancelled')], default='pending')
+
+#     def create(self, validated_data):
+#         user = validated_data('user')               # Retrieve user, service, frequency, duration, date, time
+#         services = validated_data.get('service')          # It's a list of service IDs (many-to-many)
+#         frequency = validated_data('frequency')
+#         duration = validated_data('duration')
+#         date = validated_data('date')
+#         time = validated_data('time')
+#         total_cost = self.calculate_total_cost(services, frequency, duration)                          # Calculate total cost
         
-        return data
+#         booking = Booking.objects.create(                         # Create the Booking instance
+#             user=user,
+#             frequency=frequency,
+#             duration=duration,
+#             date=date,
+#             time=time,
+#             total_cost=total_cost,
+#             status='pending'  # Default status
+#         )
+#         booking.service.set(services)              # Add services to the booking (many-to-many relationship)
+
+#         return booking
+
+#     def calculate_total_cost(self, service, frequency, duration):
+#         discount = Decimal('0.10') if duration >= 3 else Decimal('0.00')  
+#         if frequency == 'weekly':
+#             total_sessions = duration * 4  
+#         elif frequency == 'bi-weekly':
+#             total_sessions = duration * 2  
+#         elif frequency == 'monthly':
+#             total_sessions = duration 
+        
+#         total_cost = Decimal(service.price) * Decimal(total_sessions)  
+#         total_cost *= (Decimal('1.00') - discount)  
+#         return total_cost
+    
+
+
+
 
 
 
