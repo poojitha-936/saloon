@@ -1,4 +1,3 @@
-from datetime import timezone
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -63,10 +62,13 @@ class MenuSelection(models.Model):
 
 
 class Service(models.Model):
-    name = models.CharField(max_length=255)                              # Name of the service (e.g., "Men's Haircut")
-    description = models.TextField(blank=True, null=True)                                     # Description of the service
-    price = models.DecimalField(max_digits=10, decimal_places=2)          # Price for the service
-    duration_minutes = models.PositiveIntegerField()                             # Duration of the service in minutes
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    duration_minutes = models.IntegerField()
+    weekly = models.BooleanField(default=False)
+    bi_weekly = models.BooleanField(default=False)
+    monthly = models.BooleanField(default=False)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
         return self.name
@@ -74,9 +76,9 @@ class Service(models.Model):
 
 class Appointment(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE,null=True)    # Link to a user (customer)
-    service = models.ManyToManyField(Service)                         # This is a ManyToMany relationship
-    date = models.DateField()                                         # The date of the appointment
-    time = models.TimeField()                                         # The time of the appointment
+    service = models.ManyToManyField(Service)                                   # This is a ManyToMany relationship
+    date = models.DateField()                                                   # The date of the appointment
+    time = models.TimeField()                                                   # The time of the appointment
     status = models.CharField(
         max_length=20,
         choices=[('pending', 'pending'),('confirmed', 'confirmed'),('canceled','canceled')],
@@ -88,20 +90,38 @@ class Appointment(models.Model):
 
 
 class Booking(models.Model):
-    PENDING = 'pending',
-    CONFIRMED = 'confirmed',
-    CANCELED = 'canceled',
-
-    STATUS_CHOICES = [
-       (PENDING, 'pending'),
-       (CONFIRMED, 'confirmed'),
-       (CANCELED, 'canceled')
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)        # Assuming you have a CustomUser model
+    service = models.ManyToManyField(Service)  # Many-to-many relationship with services                          # Assuming you have a Service model  
+    frequency_choices = [                                                 # Choices should be defined as tuples of tuples
+        ('weekly', 'Weekly'),
+        ('bi-weekly', 'Bi-weekly'),
+        ('monthly', 'Monthly'),
+    ]
+    frequency = models.CharField(max_length=10, choices=frequency_choices)
+    duration_choices = [
+        (1, 'Short (1-3 months)'),
+        (3, 'Medium (3-6 months)'),
+        (6, 'Long (6+ months)')
+    ]
+    duration = models.IntegerField()
+    status_choices = [
+        ('pending', 'Pending'),
+        ('confirmed', 'Confirmed'),
+        ('canceled', 'Canceled')
     ]
 
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE,null=True)    # Link to a user (customer)
-    service = models.ManyToManyField(Service)                         # This is a ManyToMany relationship
-    date = models.DateField()                                         # The date of the appointment
-    time = models.TimeField()   
+    status = models.CharField(
+        max_length=20,
+        choices=[('pending', 'Pending'), ('confirmed', 'Confirmed'), ('canceled', 'Canceled')],
+        default='pending'
+    )
+
+    total_cost = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    date = models.DateField()
+    time = models.TimeField()
+
+    def __str__(self):
+        return f"Booking by {self.user} - {self.frequency} for {self.duration} months on {self.date} at {self.time}"
 
 
 

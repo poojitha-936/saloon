@@ -1,10 +1,10 @@
-
+from decimal import Decimal
 from rest_framework import serializers
-from .models import CustomUser, MenuSelection, Service, Appointment
+from .models import Booking, CustomUser, MenuSelection, Service, Appointment
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from rest_framework.exceptions import ValidationError
-from datetime import time
+from datetime import date, time
 from django.utils import timezone
 
 User=get_user_model()
@@ -129,7 +129,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
     def validate_date(self, value):
         """Ensure the appointment date is in the future."""
         # Use timezone-aware date for future check
-        if value < timezone.localdate():  # Use timezone-aware date (current date with timezone)
+        if value < date.today():  # Use timezone-aware date (current date with timezone)
             raise serializers.ValidationError("The appointment date must be in the future.")
         return value
 
@@ -142,66 +142,88 @@ class AppointmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("The appointment time must be between 9:00 AM and 6:00 PM.")
         return value
 
+# total_cost = serializers.DecimalField(max_digits=8, decimal_places=2, read_only=True)  
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# class BookingSerializer(serializers.Serializer):
-#     user = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
-#       # Handling multiple services
-#     frequency = serializers.ChoiceField(choices=Booking.frequency_choices)
-#     duration = serializers.ChoiceField(choices=Booking.duration_choices)
-#     date = serializers.DateField()
-#     time = serializers.TimeField()
-#     status = serializers.ChoiceField(choices=[('pending', 'Pending'), ('confirmed', 'Confirmed'), ('cancelled', 'Cancelled')], default='pending')
-
-#     def create(self, validated_data):
-#         user = validated_data('user')               # Retrieve user, service, frequency, duration, date, time
-#         services = validated_data.get('service')          # It's a list of service IDs (many-to-many)
-#         frequency = validated_data('frequency')
-#         duration = validated_data('duration')
-#         date = validated_data('date')
-#         time = validated_data('time')
-#         total_cost = self.calculate_total_cost(services, frequency, duration)                          # Calculate total cost
+class BookingSerializer(serializers.ModelSerializer):
+    service = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all())  
+    class Meta:
+        model = Booking
+        fields = ['id', 'service', 'frequency', 'duration', 'total_cost', 'date','time']
+    
+    def create(self, validated_data):
+        service = validated_data.get('service')  
+        frequency = validated_data['frequency']
+        duration = validated_data['duration']
+        date = validated_data.get[date]
+        time= validated_data.get[time]
+        total_cost = self.calculate_total_cost(service, frequency, duration)
         
-#         booking = Booking.objects.create(                         # Create the Booking instance
-#             user=user,
-#             frequency=frequency,
-#             duration=duration,
-#             date=date,
-#             time=time,
-#             total_cost=total_cost,
-#             status='pending'  # Default status
-#         )
-#         booking.service.set(services)              # Add services to the booking (many-to-many relationship)
+        booking = Booking.objects.create(
+            service=service,
+            frequency=frequency,
+            duration=duration,
+            total_cost=total_cost,
+            date=date,
+            time=time
 
-#         return booking
+        )
+        return booking
 
-#     def calculate_total_cost(self, service, frequency, duration):
-#         discount = Decimal('0.10') if duration >= 3 else Decimal('0.00')  
-#         if frequency == 'weekly':
-#             total_sessions = duration * 4  
-#         elif frequency == 'bi-weekly':
-#             total_sessions = duration * 2  
-#         elif frequency == 'monthly':
-#             total_sessions = duration 
+    def calculate_total_cost(self, service, frequency, duration):
+        discount = Decimal('0.10') if duration >= 3 else Decimal('0.00')  
+        if frequency == 'weekly':
+            total_sessions = duration * 4  
+        elif frequency == 'bi-weekly':
+            total_sessions = duration * 2  
+        elif frequency == 'monthly':
+            total_sessions = duration 
         
-#         total_cost = Decimal(service.price) * Decimal(total_sessions)  
-#         total_cost *= (Decimal('1.00') - discount)  
-#         return total_cost
+        total_cost = Decimal(service.price) * Decimal(total_sessions)  
+        total_cost *= (Decimal('1.00') - discount)  
+        return total_cost
+
+
+
+
+
+    # class Meta:
+    #     model = Booking
+    #     fields = ['id', 'service', 'frequency', 'duration', 'date', 'time', 'total_cost']
+
+    # def create(self, validated_data):     
+    #     user = validated_data['user']                                                                                # Retrieve user, service, frequency, duration, date, time
+    #     services = validated_data.get('service')                                                                     # It's a list of service IDs (many-to-many)
+    #     frequency = validated_data['frequency']
+    #     duration = validated_data['duration']
+    #     date = validated_data['date']
+    #     time = validated_data['time']
+    #     price = self.calculate_total_cost(services, frequency, duration)                                        # Calculate total cost
+        
+    #     booking = Booking.objects.create(                                                                            # Create the Booking instance
+    #         user=user,
+    #         frequency=frequency,
+    #         duration=duration,
+    #         date=date,
+    #         time=time,
+    #         price=price,
+    #         status='pending'                                                                                         # Default status
+    #     )
+    #     booking.service.set(services)                                                                                 # Add services to the booking (many-to-many relationship)
+
+    #     return booking
+
+    # def calculate_total_cost(self, service, frequency, duration):
+    #     discount = Decimal('0.10') if duration >= 3 else Decimal('0.00')  
+    #     if frequency == 'weekly':
+    #         total_sessions = duration * 4  
+    #     elif frequency == 'bi-weekly':
+    #         total_sessions = duration * 2  
+    #     elif frequency == 'monthly':
+    #         total_sessions = duration 
+        
+    #     total_cost += Decimal(service.price) * Decimal(total_sessions)  
+    #     total_cost *= (Decimal('1.00') - discount)  
+    #     return total_cost
     
 
 

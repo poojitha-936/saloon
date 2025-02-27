@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import RegisterView, LoginView, LogoutView ,ChangePasswordView, ForgotPasswordView, ResetPasswordView, GoogleLoginView, GoogleCallbackView, GuestLoginView, EditProfileView,MenuSelectionView, ServiceView, AppointmentCreateView
+from .views import RegisterView, LoginView, LogoutView ,ChangePasswordView, ForgotPasswordView, ResetPasswordView, GoogleLoginView, GoogleCallbackView, GuestLoginView, EditProfileView,MenuSelectionView, ServiceView, AppointmentCreateView, BookingView
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -15,5 +15,6 @@ urlpatterns = [
     path('menu_selection/', MenuSelectionView.as_view(), name='menu_selection'),
     path('service_create/', ServiceView.as_view(), name='service-create'),
     path('appointments/', AppointmentCreateView.as_view(), name='create-appointment'),
+    path('bookings/', BookingView.as_view(), name='bookings')
 
 ]

@@ -1,8 +1,7 @@
 from datetime import datetime, timedelta
 from rest_framework.views import APIView
-from .models import CustomUser, Service
-# from app.serializers import User
-from app.serializers import  RegisterSerializer, LoginSerializer, LogoutSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, MenuSelectionSerializer, ServiceSerializer,AppointmentSerializer,  User
+from .models import Booking, CustomUser, Service
+from app.serializers import  RegisterSerializer, LoginSerializer, LogoutSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, MenuSelectionSerializer, ServiceSerializer,AppointmentSerializer, BookingSerializer, User
 from rest_framework  import status
 from rest_framework .permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -12,7 +11,6 @@ from django.conf import settings
 from rest_framework.permissions import AllowAny
 import logging, requests
 from django.contrib.auth import login
-# from .models import Menu
 
 
 class RegisterView(APIView):
@@ -258,6 +256,44 @@ class AppointmentCreateView(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)                     # If validation fails, return errors
 
+
+class BookingView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = BookingSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+    
+
+
+
+
+
+
+
+
+
+    # def post(self, request):
+    # service_ids, frequency, duration, date, time = request.data.get('service', []), request.data.get('frequency'), request.data.get('duration'), request.data.get('date'), request.data.get('time')
+    # if not all([service_ids, frequency, duration, date, time]):
+    #     return Response({"detail": "All fields (service, frequency, duration, date, time) are required."}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # if Booking.objects.filter(user=request.user, frequency=frequency, service__id__in=service_ids).exists():
+    #     return Response({"detail": "You already have a booking with this service and frequency."}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # if not Service.objects.filter(id__in=service_ids).count() == len(service_ids):
+    #     return Response({"detail": "One or more services do not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # booking_data = {'user': request.user.id, 'service': service_ids, 'frequency': frequency, 'duration': duration, 'date': date, 'time': time}
+    # serializer = BookingSerializer(data=booking_data)
+    # if serializer.is_valid():
+    #     booking = serializer.save(user=request.user)
+    #     return Response(serializer.data, status=status.HTTP_201_CREATED)
+    # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Proceed with creating the booking...
 
 
 
